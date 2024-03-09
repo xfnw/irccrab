@@ -8,7 +8,14 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = { version = "4.5.2", default-features = false, features = ["derive", "std", "env", "help", "usage"] }
+clap = { version = "4.5.2", default-features = false, features = ["derive", "std", "help", "usage"] }
 rustls-pemfile = "2.1.1"
-tokio = { version = "1.36.0", features = ["rt-multi-thread", "tokio-macros", "macros", "net", "io-util", "io-std"] }
-tokio-rustls = "0.25.0"
+tokio = { version = "1.36.0", features = ["rt-multi-thread", "macros", "net", "io-util", "io-std"]}
+tokio-rustls = { version = "0.25.0", default-features = false, features = ["ring", "tls12"] }
+
+[profile.smol]
+inherits = "release"
+opt-level = "z"
+panic = "abort"
+strip = true
+lto = true
