@@ -7,6 +7,8 @@ use tokio::{
 };
 use tokio_rustls::{rustls, TlsConnector};
 
+mod danger;
+
 /// irc ping/ponger similar to ircdog
 #[derive(Debug, Parser)]
 struct Opt {
@@ -93,10 +95,11 @@ async fn main() {
     if opt.tls {
         let config = rustls::ClientConfig::builder();
         let config = if opt.insecure {
-            // rustls seems to make doing this intentionally annoying
-            // https://docs.rs/rustls/latest/rustls/struct.ConfigBuilder.html
-            // https://users.rust-lang.org/t/rustls-connecting-without-certificate-in-local-network/83822
-            todo!();
+            config
+                .dangerous()
+                .with_custom_certificate_verifier(danger::PhonyVerify::new(
+                    rustls::crypto::ring::default_provider(),
+                ))
         } else {
             let mut root_cert_store = rustls::RootCertStore::empty();
             let mut pem = std::io::BufReader::new(
