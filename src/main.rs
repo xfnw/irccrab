@@ -1,5 +1,5 @@
 use clap::Parser;
-use std::{path::PathBuf, sync::Arc};
+use std::{io::Write, path::PathBuf, sync::Arc};
 use tokio::{
     io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::TcpStream,
@@ -185,7 +185,7 @@ async fn handle_irc(stream: impl io::AsyncReadExt + io::AsyncWriteExt) {
 
                 trim_mut(&mut ircbuf);
                 ircbuf.push(b'\n');
-                io::stdout().write_all(&ircbuf).await.expect("broken pipe");
+                std::io::stdout().write_all(&ircbuf).expect("broken pipe");
 
                 ircbuf.clear();
             }
