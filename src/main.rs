@@ -114,7 +114,7 @@ async fn main() {
             config.with_no_client_auth()
         };
         let connector = TlsConnector::from(Arc::new(config));
-        let domain = rustls_pki_types::ServerName::try_from(opt.host)
+        let domain = rustls::pki_types::ServerName::try_from(opt.host)
             .expect("invalid server name")
             .to_owned();
         let tlsstream = connector
