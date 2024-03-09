@@ -28,8 +28,8 @@ struct Opt {
     #[arg(required = true)]
     host: String,
 
-    #[arg(default_value = "6667")]
-    port: u16,
+    /// port defaults to 6667 or 6697 for tls
+    port: Option<u16>,
 }
 
 fn trim_mut(buf: &mut Vec<u8>) {
@@ -78,7 +78,15 @@ async fn send_pong(
 async fn main() {
     let opt = Opt::parse();
 
-    let stream = TcpStream::connect((opt.host.as_ref(), opt.port))
+    let port = if let Some(port) = opt.port {
+        port
+    } else if opt.tls {
+        6697
+    } else {
+        6667
+    };
+
+    let stream = TcpStream::connect((opt.host.as_ref(), port))
         .await
         .expect("failed to connect");
 
@@ -109,7 +117,10 @@ async fn main() {
         let domain = rustls_pki_types::ServerName::try_from(opt.host)
             .expect("invalid server name")
             .to_owned();
-        let tlsstream = connector.connect(domain, stream).await.expect("failed to negotiate tls");
+        let tlsstream = connector
+            .connect(domain, stream)
+            .await
+            .expect("failed to negotiate tls");
         handle_irc(tlsstream).await;
     } else {
         handle_irc(stream).await;
