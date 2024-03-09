@@ -73,7 +73,8 @@ async fn send_pong(
     // https://github.com/tokio-rs/tokio/issues/3679
     //write.write_all_vectored(&[b"PONG ", pong].map(IoSlice::new)).await?;
     write.write_all(b"PONG ").await?;
-    write.write_all(pong).await
+    write.write_all(pong).await?;
+    write.flush().await
 }
 
 #[tokio::main]
@@ -148,6 +149,7 @@ async fn handle_irc(stream: impl io::AsyncReadExt + io::AsyncWriteExt) {
                 stdbuf.push(b'\r');
                 stdbuf.push(b'\n');
                 write.write_all(&stdbuf).await.expect("cannot send");
+                write.flush().await.expect("cannot send");
 
                 stdbuf.clear();
             }
