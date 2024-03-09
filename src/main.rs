@@ -1,11 +1,13 @@
 use clap::Parser;
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 use tokio::{
     io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::TcpStream,
 };
-use tokio_rustls::{rustls, TlsConnector};
+use tokio_rustls::{
+    rustls::{self, pki_types},
+    TlsConnector,
+};
 
 mod danger;
 
@@ -111,14 +113,33 @@ async fn main() {
             }
             config.with_root_certificates(root_cert_store)
         };
-        let config = if let Some(_cert) = opt.cert {
-            // with_client_auth_cert
-            todo!();
+        let config = if let Some(cert) = opt.cert {
+            use rustls_pemfile::Item;
+
+            let mut pem = std::io::BufReader::new(
+                std::fs::File::open(cert).expect("cannot open client cert"),
+            );
+            let mut certs = Vec::new();
+            let mut keys: Vec<pki_types::PrivateKeyDer> = Vec::new();
+
+            for c in rustls_pemfile::read_all(&mut pem) {
+                match c.unwrap() {
+                    Item::X509Certificate(crt) => certs.push(crt),
+                    Item::Pkcs1Key(key) => keys.push(key.into()),
+                    Item::Pkcs8Key(key) => keys.push(key.into()),
+                    Item::Sec1Key(key) => keys.push(key.into()),
+                    e => eprintln!("unknown item in pem: {:?}", e),
+                }
+            }
+
+            config
+                .with_client_auth_cert(certs, keys.pop().expect("no key found"))
+                .expect("could not load client cert")
         } else {
             config.with_no_client_auth()
         };
         let connector = TlsConnector::from(Arc::new(config));
-        let domain = rustls::pki_types::ServerName::try_from(opt.host)
+        let domain = pki_types::ServerName::try_from(opt.host)
             .expect("invalid server name")
             .to_owned();
         let tlsstream = connector
