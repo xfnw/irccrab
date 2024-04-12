@@ -1,5 +1,5 @@
 use clap::Parser;
-use std::{io::Write, path::PathBuf, sync::Arc};
+use std::{io::Write, net::SocketAddr, path::PathBuf, sync::Arc};
 use tokio::{
     io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::TcpStream,
@@ -8,6 +8,7 @@ use tokio_rustls::{
     rustls::{self, pki_types},
     TlsConnector,
 };
+use tokio_socks::tcp::Socks5Stream;
 
 mod danger;
 
@@ -28,6 +29,10 @@ struct Opt {
 
     #[arg(long, default_value = "/etc/ssl/cert.pem")]
     cafile: PathBuf,
+
+    /// connect via socks5 proxy
+    #[arg(short = 's', long)]
+    socks: Option<SocketAddr>,
 
     #[arg(required = true)]
     host: String,
@@ -91,10 +96,25 @@ async fn main() {
         6667
     };
 
-    let stream = TcpStream::connect((opt.host.as_ref(), port))
-        .await
-        .expect("failed to connect");
+    let target = (opt.host.as_ref(), port);
 
+    if let Some(sock) = opt.socks {
+        let stream = Socks5Stream::connect(sock, target)
+            .await
+            .expect("failed to sock");
+
+        handle_tls(opt, stream).await;
+    } else {
+        let stream = TcpStream::connect(target).await.expect("failed to connect");
+
+        handle_tls(opt, stream).await;
+    }
+}
+
+async fn handle_tls<T: io::AsyncReadExt + io::AsyncWriteExt + std::marker::Unpin>(
+    opt: Opt,
+    stream: T,
+) {
     if opt.tls {
         let config = rustls::ClientConfig::builder();
         let config = if opt.insecure {
@@ -152,7 +172,7 @@ async fn main() {
     }
 }
 
-async fn handle_irc(stream: impl io::AsyncReadExt + io::AsyncWriteExt) {
+async fn handle_irc<T: io::AsyncReadExt + io::AsyncWriteExt>(stream: T) {
     let (read, mut write) = io::split(stream);
     let mut read = BufReader::new(read);
     let mut stdin = BufReader::new(io::stdin());

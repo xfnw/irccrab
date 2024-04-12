@@ -12,6 +12,7 @@ clap = { version = "4.5.2", default-features = false, features = ["derive", "std
 rustls-pemfile = "2.1.1"
 tokio = { version = "1.36.0", features = ["rt-multi-thread", "macros", "net", "io-util", "io-std"]}
 tokio-rustls = { version = "0.25.0", default-features = false, features = ["ring", "tls12"] }
+tokio-socks = "0.5.1"
 
 [profile.smol]
 inherits = "release"
