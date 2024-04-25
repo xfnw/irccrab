@@ -24,14 +24,14 @@ struct Opt {
     insecure: bool,
 
     /// connect with a tls client certificate
-    #[arg(short = 'c', long)]
+    #[arg(short, long)]
     cert: Option<PathBuf>,
 
     #[arg(long, default_value = "/etc/ssl/cert.pem")]
     cafile: PathBuf,
 
     /// connect via socks5 proxy
-    #[arg(short = 's', long)]
+    #[arg(short, long, value_name = "ADDRESS")]
     socks: Option<SocketAddr>,
 
     #[arg(required = true)]
