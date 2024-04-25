@@ -1,8 +1,9 @@
 use clap::Parser;
-use std::{io::Write, net::SocketAddr, path::PathBuf, process::exit, sync::Arc};
+use std::{io::Write, net::SocketAddr, path::PathBuf, process::exit, sync::Arc, time::Duration};
 use tokio::{
     io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::TcpStream,
+    time::sleep,
 };
 use tokio_rustls::{
     rustls::{self, pki_types},
@@ -33,6 +34,10 @@ struct Opt {
     /// connect via socks5 proxy
     #[arg(short, long, value_name = "ADDRESS")]
     socks: Option<SocketAddr>,
+
+    /// send pings after inactivity
+    #[arg(short, long, value_name = "SECONDS")]
+    ping: Option<u64>,
 
     #[arg(required = true)]
     host: String,
@@ -126,14 +131,14 @@ async fn handle_tls<T: io::AsyncReadExt + io::AsyncWriteExt + std::marker::Unpin
         } else {
             let mut root_cert_store = rustls::RootCertStore::empty();
             let mut pem = std::io::BufReader::new(
-                std::fs::File::open(opt.cafile).expect("cannot open cafile"),
+                std::fs::File::open(&opt.cafile).expect("cannot open cafile"),
             );
             for cert in rustls_pemfile::certs(&mut pem) {
                 root_cert_store.add(cert.unwrap()).unwrap();
             }
             config.with_root_certificates(root_cert_store)
         };
-        let config = if let Some(cert) = opt.cert {
+        let config = if let Some(ref cert) = opt.cert {
             use rustls_pemfile::Item;
 
             let mut pem = std::io::BufReader::new(
@@ -159,20 +164,21 @@ async fn handle_tls<T: io::AsyncReadExt + io::AsyncWriteExt + std::marker::Unpin
             config.with_no_client_auth()
         };
         let connector = TlsConnector::from(Arc::new(config));
-        let domain = pki_types::ServerName::try_from(opt.host)
+        let domain = pki_types::ServerName::try_from(opt.host.as_str())
             .expect("invalid server name")
             .to_owned();
         let tlsstream = connector
             .connect(domain, stream)
             .await
             .expect("failed to negotiate tls");
-        handle_irc(tlsstream).await;
+        handle_irc(opt, tlsstream).await;
     } else {
-        handle_irc(stream).await;
+        handle_irc(opt, stream).await;
     }
 }
 
-async fn handle_irc<T: io::AsyncReadExt + io::AsyncWriteExt>(stream: T) {
+async fn handle_irc<T: io::AsyncReadExt + io::AsyncWriteExt>(opt: Opt, stream: T) {
+    let pingdelay = Duration::from_secs(opt.ping.unwrap_or(0));
     let (read, mut write) = io::split(stream);
     let mut read = BufReader::new(read);
     let mut stdin = BufReader::new(io::stdin());
@@ -208,6 +214,9 @@ async fn handle_irc<T: io::AsyncReadExt + io::AsyncWriteExt>(stream: T) {
                 std::io::stdout().write_all(&ircbuf).expect("broken pipe");
 
                 ircbuf.clear();
+            }
+            () = sleep(pingdelay), if opt.ping.is_some() => {
+                write.write_all(b"PING :boop\r\n").await.expect("cannot send");
             }
         }
     }
