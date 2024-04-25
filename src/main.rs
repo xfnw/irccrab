@@ -1,5 +1,5 @@
 use clap::Parser;
-use std::{io::Write, net::SocketAddr, path::PathBuf, sync::Arc};
+use std::{io::Write, net::SocketAddr, path::PathBuf, process::exit, sync::Arc};
 use tokio::{
     io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::TcpStream,
@@ -183,7 +183,7 @@ async fn handle_irc<T: io::AsyncReadExt + io::AsyncWriteExt>(stream: T) {
         tokio::select! {
             Ok(len) = stdin.read_until(b'\n', &mut stdbuf) => {
                 if len == 0 {
-                    return;
+                    exit(0);
                 }
 
                 trim_mut(&mut stdbuf);
@@ -196,7 +196,7 @@ async fn handle_irc<T: io::AsyncReadExt + io::AsyncWriteExt>(stream: T) {
             }
             Ok(len) = read.read_until(b'\n', &mut ircbuf) => {
                 if len == 0 {
-                    return;
+                    exit(0);
                 }
 
                 if let Some(pong) = is_pong(&ircbuf) {
