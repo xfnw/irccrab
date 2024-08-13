@@ -39,6 +39,10 @@ struct Opt {
     #[arg(short, long, value_name = "SECONDS")]
     ping: Option<u64>,
 
+    /// quickly register with same nick/user/gecos
+    #[arg(short, long, value_name = "NAME")]
+    quickreg: Option<String>,
+
     #[arg(required = true)]
     host: String,
 
@@ -184,6 +188,12 @@ async fn handle_irc<T: io::AsyncReadExt + io::AsyncWriteExt>(opt: Opt, stream: T
     let mut stdin = BufReader::new(io::stdin());
     let mut stdbuf = Vec::with_capacity(512);
     let mut ircbuf = Vec::with_capacity(512);
+
+    if let Some(name) = opt.quickreg {
+        let o = format!("NICK {0}\r\nUSER {0} 0 * :{}\r\n", name);
+        write.write_all(o.as_bytes()).await.expect("cannot send");
+        write.flush().await.expect("cannot send");
+    }
 
     loop {
         tokio::select! {
