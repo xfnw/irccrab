@@ -1,6 +1,7 @@
 use clap::Parser;
 use std::{io::Write, net::SocketAddr, path::PathBuf, process::exit, sync::Arc, time::Duration};
 use tokio::{
+    fs::File,
     io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::TcpStream,
     time::sleep,
@@ -42,6 +43,10 @@ struct Opt {
     /// quickly register with same nick/user/gecos
     #[arg(short, long, value_name = "NAME")]
     quickreg: Option<String>,
+
+    /// register using lines from file
+    #[arg(short, long, value_name = "FILE")]
+    regfile: Option<PathBuf>,
 
     #[arg(required = true)]
     host: String,
@@ -120,10 +125,10 @@ async fn main() {
     }
 }
 
-async fn handle_tls<T: io::AsyncReadExt + io::AsyncWriteExt + std::marker::Unpin>(
-    opt: Opt,
-    stream: T,
-) {
+async fn handle_tls<T>(opt: Opt, stream: T)
+where
+    T: io::AsyncReadExt + io::AsyncWriteExt + Unpin,
+{
     if opt.tls {
         let config = rustls::ClientConfig::builder();
         let config = if opt.insecure {
@@ -181,7 +186,10 @@ async fn handle_tls<T: io::AsyncReadExt + io::AsyncWriteExt + std::marker::Unpin
     }
 }
 
-async fn handle_irc<T: io::AsyncReadExt + io::AsyncWriteExt>(opt: Opt, stream: T) {
+async fn handle_irc<T>(opt: Opt, stream: T)
+where
+    T: io::AsyncReadExt + io::AsyncWriteExt,
+{
     let pingdelay = Duration::from_secs(opt.ping.unwrap_or(0));
     let (read, mut write) = io::split(stream);
     let mut read = BufReader::new(read);
@@ -193,6 +201,17 @@ async fn handle_irc<T: io::AsyncReadExt + io::AsyncWriteExt>(opt: Opt, stream: T
         let o = format!("NICK {0}\r\nUSER {0} 0 * :{}\r\n", name);
         write.write_all(o.as_bytes()).await.expect("cannot send");
         write.flush().await.expect("cannot send");
+    }
+
+    if let Some(path) = opt.regfile {
+        let file = File::open(path).await.expect("bork regfile");
+        let mut read = BufReader::new(file).lines();
+        while let Some(mut line) = read.next_line().await.unwrap() {
+            line.push('\r');
+            line.push('\n');
+            write.write_all(line.as_bytes()).await.expect("cannot send");
+            write.flush().await.expect("cannot send");
+        }
     }
 
     loop {
