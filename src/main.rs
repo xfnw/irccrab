@@ -1,5 +1,8 @@
 use clap::Parser;
-use std::{io::Write, net::SocketAddr, path::PathBuf, process::exit, sync::Arc, time::Duration};
+use std::{
+    collections::BTreeSet, io::Write, net::SocketAddr, path::PathBuf, process::exit, sync::Arc,
+    time::Duration,
+};
 use tokio::{
     fs::File,
     io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -47,6 +50,12 @@ struct Opt {
     /// register using lines from file
     #[arg(short, long, value_name = "FILE")]
     regfile: Option<PathBuf>,
+
+    /// commands or numerics to avoid printing
+    ///
+    /// may be specified multiple times to ignore more
+    #[arg(short, long)]
+    ignore: Vec<Vec<u8>>,
 
     #[arg(required = true)]
     host: String,
@@ -205,6 +214,22 @@ where
     }
 }
 
+async fn process_incoming(
+    ignores: &BTreeSet<Vec<u8>>,
+    write: &mut io::WriteHalf<impl AsyncWriteExt>,
+    buf: &[u8],
+) -> bool {
+    if let Some((cmd, rest)) = split_cmd(buf) {
+        if b"PING" == cmd {
+            send_pong(write, rest).await.expect("cannot send");
+        }
+        if ignores.contains(cmd) {
+            return false;
+        }
+    }
+    true
+}
+
 async fn handle_irc<T>(opt: Opt, stream: T)
 where
     T: io::AsyncReadExt + io::AsyncWriteExt,
@@ -215,6 +240,7 @@ where
     let mut stdin = BufReader::new(io::stdin());
     let mut stdbuf = Vec::with_capacity(512);
     let mut ircbuf = Vec::with_capacity(512);
+    let ignores = BTreeSet::from_iter(opt.ignore);
 
     if let Some(ref name) = opt.quickreg {
         let o = format!("NICK {0}\r\nUSER {0} 0 * :{}\r\n", name);
@@ -253,13 +279,11 @@ where
                     exit(0);
                 }
 
-                if let Some((b"PING", rest)) = split_cmd(&ircbuf) {
-                    send_pong(&mut write, rest).await.expect("cannot send");
+                if process_incoming(&ignores, &mut write, &ircbuf).await {
+                    trim_mut(&mut ircbuf);
+                    ircbuf.push(b'\n');
+                    std::io::stdout().write_all(&ircbuf).expect("broken pipe");
                 }
-
-                trim_mut(&mut ircbuf);
-                ircbuf.push(b'\n');
-                std::io::stdout().write_all(&ircbuf).expect("broken pipe");
 
                 ircbuf.clear();
             }
