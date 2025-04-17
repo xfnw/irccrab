@@ -216,13 +216,13 @@ where
     let mut stdbuf = Vec::with_capacity(512);
     let mut ircbuf = Vec::with_capacity(512);
 
-    if let Some(name) = opt.quickreg {
+    if let Some(ref name) = opt.quickreg {
         let o = format!("NICK {0}\r\nUSER {0} 0 * :{}\r\n", name);
         write.write_all(o.as_bytes()).await.expect("cannot send");
         write.flush().await.expect("cannot send");
     }
 
-    if let Some(path) = opt.regfile {
+    if let Some(ref path) = opt.regfile {
         let file = File::open(path).await.expect("bork regfile");
         let mut read = BufReader::new(file).lines();
         while let Some(mut line) = read.next_line().await.unwrap() {
