@@ -64,25 +64,44 @@ fn trim_mut(buf: &mut Vec<u8>) {
     }
 }
 
-fn skip_word(buf: &[u8]) -> Option<&[u8]> {
+fn split_word(buf: &[u8]) -> Option<(&[u8], &[u8])> {
     for (i, b) in buf.iter().enumerate() {
         if b == &b' ' {
-            return Some(&buf[i + 1..]);
+            return Some((&buf[..i], &buf[i + 1..]));
         }
     }
     None
 }
 
-fn is_pong(buf: &[u8]) -> Option<&[u8]> {
+#[test]
+fn check_split_word() {
+    assert_eq!(split_word(b"nospaces"), None);
+    assert_eq!(
+        split_word(b"yip yap yop"),
+        Some((b"yip".as_ref(), b"yap yop".as_ref()))
+    );
+}
+
+fn split_cmd(buf: &[u8]) -> Option<(&[u8], &[u8])> {
     if let Some(first) = buf.first() {
         if b"@:".contains(first) {
-            return is_pong(skip_word(buf)?);
+            return split_cmd(split_word(buf)?.1);
         }
-        if buf.starts_with(b"PING ") {
-            return Some(&buf[5..]);
-        }
+        return split_word(buf);
     }
     None
+}
+
+#[test]
+fn check_split_cmd() {
+    assert_eq!(
+        split_cmd(b":yip yap yop"),
+        Some((b"yap".as_ref(), b"yop".as_ref()))
+    );
+    assert_eq!(
+        split_cmd(b"@yip :yap yop yote"),
+        Some((b"yop".as_ref(), b"yote".as_ref()))
+    );
 }
 
 async fn send_pong(
@@ -234,8 +253,8 @@ where
                     exit(0);
                 }
 
-                if let Some(pong) = is_pong(&ircbuf) {
-                    send_pong(&mut write, pong).await.expect("cannot send");
+                if let Some((b"PING", rest)) = split_cmd(&ircbuf) {
+                    send_pong(&mut write, rest).await.expect("cannot send");
                 }
 
                 trim_mut(&mut ircbuf);
