@@ -12,7 +12,7 @@ use tokio_rustls::rustls::{
 /// certificate verification as obnoxious as possible...
 
 #[derive(Debug)]
-pub(crate) struct PhonyVerify(CryptoProvider);
+pub struct PhonyVerify(CryptoProvider);
 
 impl PhonyVerify {
     pub fn new(provider: CryptoProvider) -> Arc<Self> {
