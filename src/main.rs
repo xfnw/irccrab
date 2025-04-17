@@ -190,7 +190,7 @@ where
                     Item::Pkcs1Key(key) => keys.push(key.into()),
                     Item::Pkcs8Key(key) => keys.push(key.into()),
                     Item::Sec1Key(key) => keys.push(key.into()),
-                    e => eprintln!("unknown item in pem: {:?}", e),
+                    e => eprintln!("unknown item in pem: {e:?}"),
                 }
             }
 
@@ -243,7 +243,7 @@ where
     let ignores = BTreeSet::from_iter(opt.ignore);
 
     if let Some(ref name) = opt.quickreg {
-        let o = format!("NICK {0}\r\nUSER {0} 0 * :{}\r\n", name);
+        let o = format!("NICK {name}\r\nUSER {name} 0 * :{name}\r\n");
         write.write_all(o.as_bytes()).await.expect("cannot send");
         write.flush().await.expect("cannot send");
     }
