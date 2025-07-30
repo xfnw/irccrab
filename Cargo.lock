@@ -180,9 +180,9 @@ dependencies = [
 
 [[package]]
 name = "irc-connect"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d9ba2adf2f2a70c69f021a821cdc77e4635835a67b9f0181a39691925cc740d"
+checksum = "3bc27be1bc338461b13663d55670727e5ad5de1c36e0112f4b52773441453945"
 dependencies = [
  "foxerror",
  "pin-project-lite",

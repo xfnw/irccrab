@@ -1,7 +1,7 @@
 use clap::Parser;
 use irc_connect::{
     tokio_rustls::rustls::{
-        pki_types::{pem::PemObject, CertificateDer, PrivateKeyDer, ServerName},
+        pki_types::{pem::PemObject, CertificateDer, PrivateKeyDer},
         RootCertStore,
     },
     Stream,
@@ -12,7 +12,6 @@ use std::{
 use tokio::{
     fs::File,
     io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader},
-    net::lookup_host,
     time::sleep,
 };
 
@@ -137,13 +136,7 @@ async fn main() {
         6667
     };
 
-    let target = lookup_host((opt.host.as_ref(), port))
-        .await
-        .expect("looking up host")
-        .next()
-        .unwrap();
-
-    let stream = Stream::new_tcp(&target);
+    let stream = Stream::new_tcp((opt.host.as_ref(), port));
 
     let stream = if let Some(addr) = opt.socks {
         stream.socks5(addr)
@@ -152,11 +145,8 @@ async fn main() {
     };
 
     let stream = if opt.tls {
-        let domain = ServerName::try_from(opt.host.as_str())
-            .expect("invalid server name")
-            .to_owned();
         if opt.insecure {
-            stream.tls_danger_insecure(domain)
+            stream.tls_danger_insecure(None)
         } else {
             let mut root_cert_store = RootCertStore::empty();
             let mut pem = std::io::BufReader::new(
@@ -165,7 +155,7 @@ async fn main() {
             for cert in rustls_pemfile::certs(&mut pem) {
                 root_cert_store.add(cert.unwrap()).unwrap();
             }
-            stream.tls_with_root(domain, root_cert_store)
+            stream.tls_with_root(None, root_cert_store)
         }
     } else {
         stream
