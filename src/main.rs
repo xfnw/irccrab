@@ -30,7 +30,7 @@ struct Opt {
     #[arg(short, long)]
     cert: Option<PathBuf>,
 
-    #[arg(long, default_value = "/etc/ssl/cert.pem")]
+    #[arg(long, default_value = "/etc/ssl/certs/ca-bundle.crt")]
     cafile: PathBuf,
 
     /// connect via socks5 proxy
