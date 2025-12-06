@@ -149,12 +149,11 @@ async fn main() {
             stream.tls_danger_insecure(None)
         } else {
             let mut root_cert_store = RootCertStore::empty();
-            let mut pem = std::io::BufReader::new(
-                std::fs::File::open(&opt.cafile).expect("cannot open cafile"),
+            root_cert_store.add_parsable_certificates(
+                CertificateDer::pem_file_iter(&opt.cafile)
+                    .expect("cannot open cafile")
+                    .flatten(),
             );
-            for cert in rustls_pemfile::certs(&mut pem) {
-                root_cert_store.add(cert.unwrap()).unwrap();
-            }
             stream.tls_with_root(None, root_cert_store)
         }
     } else {
