@@ -4,7 +4,7 @@ use irc_connect::{
         pki_types::{pem::PemObject, CertificateDer, PrivateKeyDer},
         RootCertStore,
     },
-    Stream,
+    Connection,
 };
 use std::{
     collections::BTreeSet, io::Write, net::SocketAddr, path::PathBuf, process::exit, time::Duration,
@@ -136,7 +136,7 @@ async fn main() {
         6667
     };
 
-    let stream = Stream::new_tcp((opt.host.as_ref(), port));
+    let stream = Connection::new_tcp((opt.host.as_ref(), port));
 
     let stream = if let Some(addr) = opt.socks {
         stream.socks5(addr)

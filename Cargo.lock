@@ -81,17 +81,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5baebc0774151f905a1a2cc41989300b1e6fbb29aff0ceffa1064fdd3088d582"
 
 [[package]]
-name = "foxerror"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5aed8f96eeb5b74c8af07316eaa8e09c004ae06c03ed491b1216717fd76d3c71"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "futures-core"
 version = "0.3.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -133,11 +122,10 @@ checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
 name = "irc-connect"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3bc27be1bc338461b13663d55670727e5ad5de1c36e0112f4b52773441453945"
+checksum = "6c4eb012caa13de37ac16d0c0ceebd41907b95a4d0e74dc763d067a6156cd828"
 dependencies = [
- "foxerror",
  "pin-project-lite",
  "tokio",
  "tokio-rustls",
